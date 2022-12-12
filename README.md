@@ -29,3 +29,14 @@ planning on how to make the buttons in a specific coordinates and plot them in V
 
 30/11/22
 finished the UI for the calculator
+
+1-11/12/22
+- researched on how to make an output for the buttons
+- redesigned the UI to make it more beginner friendly
+- struggled with the functions
+- sucessfully made a function that can store / output numbers
+- attempting to make shift f functions work for clear REG
+- researched on using multiple functions in a button when a specific condition meets
+
+11/12/22
+- finished final UI design and started off with basic functions for RPN
