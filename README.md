@@ -4,18 +4,7 @@ Python project by Key Suwatcharapinun 65011673 FE
 26/11/22
 GUI of the calculator 1 & attempt 1 to program RPN
 
-#26/11/22: attempt to program RPN for calculator
-#def RPN():
-#    stm = True
-#    while stm:
-#        list = []
-#        try:
-#            x = int(input())
-#            list.append(x)
-#        except:
-#            stm = False
-#        return list
-# print(RPN())
+26/11/22: attempt to program RPN for calculator
 
 27/11/22
 Sucessfully made the calculator BG and have started on buttons after failed research on invis button

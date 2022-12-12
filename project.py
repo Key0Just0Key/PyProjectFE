@@ -1,6 +1,7 @@
 #code for the calculator's GUI
 from tkinter import *
-import math
+from decimal import *
+from math import *
 
 root = Tk()
 root.geometry("1200x750")
@@ -11,7 +12,7 @@ font1 = "Arial 50"
 font2 = "Arial 30"
 
 opt = StringVar()
-opt.set("")
+opt.set("0.00")
 spt = StringVar()
 spt.set("[ ]")
 sqc = ''
@@ -24,8 +25,9 @@ stackdisplay.place(x = 187, y = 140)
 
 #Functions of the Calculaor
 digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
-operators = ["+", "-", "*", "/", "1/x", "+/-", "y^x", "%", "e^x"]
-others = ["C", "ENTER", "REG", "SWAP"]
+operators = ["+", "-", "*", "/", "1/x", "+/-", "y^x", "%", "del%", "T%", "x switch y", "EEX"]
+mem_cores = ["n", "i", "PV", "PMT", "FV", "STO", "RCL"]
+finance_dict = {"n": None, "i": None, "PV": None, "PMT": None, "FV": None}
 stack = [] 
 operationPressed = False
 isAnErrorHappened = False
@@ -59,18 +61,40 @@ def function(x):
         try:
             if isinstance(x, Event): # Input via keyboard rather than clicking on app
                 x = chr(x)
-            if x in ["+", "-", "*", "/", "y^x", "%"]:
-                if opt.get():
-                    x = float(opt.get())
-                    y = float(stack.pop())
-                else:
-                    x = float(stack.pop())
-                    y = float(stack.pop())
+            if x in ["+", "-", "*", "/", "y^x", "del%", "T%"]:
+                a = opt.get()
+                b = stack[-1]
+                c = Decimal(a) / Decimal(b)
                 if x == "+":
-                    opt.set((round(y + x, 10)))                       
-            
+                    opt.set(round(Decimal(b) + Decimal(a), 2))
+                if x == "-":
+                    opt.set(round(Decimal(b) - Decimal(a), 2))
+                if x == "*":
+                    opt.set(round(Decimal(b) * Decimal(a), 2))
+                if x == "/":
+                    opt.set(round(Decimal(b) / Decimal(a), 2))
+                if x == "y^x":
+                    opt.set(round(Decimal(b) ** Decimal(a), 2))
+                if x == "T%":
+                    opt.set(round(c * 100, 2))
+                if x == "del%":
+                    opt.set(round((c-1)*100, 2))
+                stack.pop()
+                spt.set(stack)
+
+            if x in ["1/x", "+/-", "%", "EEX"]:
+                a = opt.get()
+                if x == "1/x":
+                    opt.set(round(1 / Decimal(a), 2))
+                if x == "+/-":
+                    opt.set(round(Decimal(a) * -1, 2))
+                if x == "%":
+                    opt.set(round(Decimal(a) / 100, 2))
+                if x == "EEX":
+                    opt.set(str(a))
+
+
         except IndexError:  # There isn't enough args in the stack to do the operation
-            press_ENTER()
             opt.set(errorMessages["stackError"])
             isAnErrorHappened = True
             
@@ -85,41 +109,58 @@ def function(x):
         except OverflowError:
             opt.set(errorMessages["overflow"])
             isAnErrorHappened = True
-            
+    if x in mem_cores:
+        if x in ["n", "i", "PV", "PMT", "FV"]:
+            memory(x)
+            if len(stack) == 4:
+                formula(x)
+
 
 #individual buttons / commands
 def press_f():
-    global button3x5
     global f_function
-    f_function = True
-    if f_function:
-        button3x5 = Button(root, image = image3x5, command = lambda: press_REG())
+    if f_function == False:
+        f_function = True
+    else:
+        f_function = False
 
+def press_g():
+    global g_function
+    if g_function == False:
+        g_function = True
+    else:
+        g_function = False
         
 def press_C():
     global sqc
+    global isAnErrorHappened
     opt.set("")
     sqc = ''
+    isAnErrorHappened = False
+    if f_function:
+        press_REG()
 
 def press_ENTER():
     if opt.get() and opt.get() not in errorMessages.values():
-        refresh_stack_display() 
+        refresh_stack_display()
+
+def press_xyswitch():
+    a = opt.get()
+    b = stack[-1]
 
 
 
 #outside commands
 def press_num(num):
     global sqc
+    global f_function
     sqc = sqc + str(num)
     opt.set(sqc)
-
-def press_REG():
-    global stack
-    global sqc
-    opt.set("")
-    spt.set("[ ]")
-    sqc = ''
-    stack = []
+    if f_function:
+        sqc = ''
+        sqci = sqc + '.' + int(num)*'0' 
+        opt.set(sqci)
+        f_function = False
 
 def refresh_stack_display():
     global sqc
@@ -133,7 +174,56 @@ def refresh_stack_display():
         spt.set(stack)
         press_C()
 
+def memory(var):
+    if var in ["n", "i", "PV", "PMT", "FV"]:
+        finance_dict[var] = opt.get()
+        press_C()
+        stack.append(str(var) + '=' + finance_dict[var])
+        spt.set(stack)
+    print(finance_dict)
 
+def formula(n, i, PV, PMT, FV):
+    global finance_dict
+    n = Decimal(memory("n"))
+    i = Decimal(memory("i"))
+    PV = Decimal(memory("PV"))
+    PMT = Decimal(memory("PMT"))
+    FV = Decimal(memory("FV"))
+    if isinstance(formula, Event):
+        if n == None:
+            find_PMT()
+        if i == None:
+            find_PMT()
+        if PV == None:
+            find_PMT()
+        if PMT == None:
+            find_PMT()
+        if FV == None:
+            find_PMT()
+
+def find_PMT(n, i, PV, FV):
+    global formula
+    irt = (1+(i/100))**n
+    PMT = Decimal(round((((PV*irt)+FV)*(i/100))/(1-irt), 2))
+    finance_dict["PMT"] = PMT
+    opt.set(finance_dict['PMT'])
+    stack.clear()
+    spt.set(stack)
+
+
+
+#shift F commands
+def press_REG():
+    global stack
+    global sqc
+    global f_function
+    global isAnErrorHappened
+    opt.set("")
+    spt.set("[ ]")
+    sqc = ''
+    stack = []
+    f_function = False
+    isAnErrorHappened = False
 
 #calculator as bg image 
 bg = PhotoImage(file = "C:\\Users\\Key\\Desktop\\PyProFE\\PyProjectFE\\Calculator.png")
@@ -182,17 +272,17 @@ image4x9 = PhotoImage(file = "C:\\Users\\Key\\Desktop\\PyProFE\\PyProjectFE\\But
 image4x10 = PhotoImage(file = "C:\\Users\\Key\\Desktop\\PyProFE\\PyProjectFE\\Buttons\\4x10 sym plus.png")
 
 #buttons for the calculator
-button1x1 = Button(root, image = image1x1)
+button1x1 = Button(root, image = image1x1, command = lambda: memory('n'))
 button1x1.place(x=73, y=257)
-button1x2 = Button(root, image = image1x2)
+button1x2 = Button(root, image = image1x2, command = lambda: memory('i'))
 button1x2.place(x=183, y=257)
-button1x3 = Button(root, image = image1x3)
+button1x3 = Button(root, image = image1x3, command = lambda: memory('PV'))
 button1x3.place(x=290, y=257)
-button1x4 = Button(root, image = image1x4)
+button1x4 = Button(root, image = image1x4, command = lambda: memory('PMT'))
 button1x4.place(x=399, y=257)
-button1x5 = Button(root, image = image1x5)
+button1x5 = Button(root, image = image1x5, command = lambda: memory('FV'))
 button1x5.place(x=505, y=257)
-button1x6 = Button(root, image = image1x6)
+button1x6 = Button(root, image = image1x6, command = lambda: function('+/-'))
 button1x6.place(x=614, y=257)
 button1x7 = Button(root, image = image1x7, command = lambda: function('7'))
 button1x7.place(x=721, y=257)
@@ -200,19 +290,19 @@ button1x8 = Button(root, image = image1x8, command = lambda: function('8'))
 button1x8.place(x=828, y=257)
 button1x9 = Button(root, image = image1x9, command = lambda: function('9'))
 button1x9.place(x=936, y=257)
-button1x10 = Button(root, image = image1x10)
+button1x10 = Button(root, image = image1x10, command = lambda: function("/"))
 button1x10.place(x=1044, y=257)
-button2x1 = Button(root, image = image2x1)
+button2x1 = Button(root, image = image2x1, command = lambda: function("y^x"))
 button2x1.place(x=73, y=377)
-button2x2 = Button(root, image = image2x2)
+button2x2 = Button(root, image = image2x2, command =  lambda: function('1/x'))
 button2x2.place(x=183, y=377)
-button2x3 = Button(root, image = image2x3)
+button2x3 = Button(root, image = image2x3, command = lambda: function('T%'))
 button2x3.place(x=290, y=377)
-button2x4 = Button(root, image = image2x4)
+button2x4 = Button(root, image = image2x4, command = lambda: function('del%'))
 button2x4.place(x=399, y=377)
-button2x5 = Button(root, image = image2x5)
+button2x5 = Button(root, image = image2x5, command = lambda: function('%'))
 button2x5.place(x=505, y=377)
-button2x6 = Button(root, image = image2x6)
+button2x6 = Button(root, image = image2x6, command = lambda: function("EEX"))
 button2x6.place(x=614, y=377)
 button2x7 = Button(root, image = image2x7, command = lambda: function('4'))
 button2x7.place(x=721, y=377)
@@ -220,7 +310,7 @@ button2x8 = Button(root, image = image2x8, command = lambda: function('5'))
 button2x8.place(x=828, y=377)
 button2x9 = Button(root, image = image2x9, command = lambda: function('6'))
 button2x9.place(x=936, y=377)
-button2x10 = Button(root, image = image2x10)
+button2x10 = Button(root, image = image2x10, command = lambda: function("*"))
 button2x10.place(x=1044, y=377)
 button3x1 = Button(root, image = image3x1)
 button3x1.place(x=73, y=497)
@@ -228,7 +318,7 @@ button3x2 = Button(root, image = image3x2)
 button3x2.place(x=183, y=497)
 button3x3 = Button(root, image = image3x3)
 button3x3.place(x=290, y=497)
-button3x4 = Button(root, image = image3x4)
+button3x4 = Button(root, image = image3x4, command = lambda: press_xyswitch())
 button3x4.place(x=399, y=497)
 button3x5 = Button(root, image = image3x5, command = lambda: press_C())
 button3x5.place(x=505, y=497)
@@ -240,13 +330,13 @@ button3x8 = Button(root, image = image3x8, command = lambda: function('2'))
 button3x8.place(x=828, y=497)
 button3x9 = Button(root, image = image3x9, command = lambda: function('3'))
 button3x9.place(x=936, y=497)
-button3x10 = Button(root, image = image3x10)
+button3x10 = Button(root, image = image3x10, command = lambda: function("-"))
 button3x10.place(x=1044, y=497)
 button4x1 = Button(root, image = image4x1)
 button4x1.place(x=73, y=615)
 button4x2 = Button(root, image = image4x2, command = lambda: press_f())
 button4x2.place(x=183, y=615)
-button4x3 = Button(root, image = image4x3)
+button4x3 = Button(root, image = image4x3, command = lambda: press_g())
 button4x3.place(x=290, y=615)
 button4x4 = Button(root, image = image4x4)
 button4x4.place(x=399, y=615)
