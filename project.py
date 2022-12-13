@@ -14,7 +14,7 @@ font2 = "Arial 30"
 opt = StringVar()
 opt.set("0.00")
 spt = StringVar()
-spt.set("[ ]")
+spt.set("")
 sqc = ''
 stacklbl = Label(root, text = "Stack: ", font = font2, width = 6, anchor = W)
 stacklbl.place(x = 71, y = 143)
@@ -45,6 +45,7 @@ def function(x):
     global errorMessages
     global opt
     global stack
+    global g_function
     if x in digits:
         if isAnErrorHappened:
             press_C()
@@ -53,8 +54,15 @@ def function(x):
             press_C()
         if isinstance(x, Event): # Input via keyboard rather than clicking on app
             x = chr(x)
-        if not(x == "." and x in opt.get()): 
+        if g_function:
+            a = opt.get()
+            if x == '3':
+                opt.set(round(factorial(int(a)), 2))
+                g_function = False
+        elif not(x == "." and x in opt.get()): 
             press_num(x)
+        
+
     if x in operators:
         if opt.get() in errorMessages.values():
             return
@@ -64,7 +72,6 @@ def function(x):
             if x in ["+", "-", "*", "/", "y^x", "del%", "T%"]:
                 a = opt.get()
                 b = stack[-1]
-                c = Decimal(a) / Decimal(b)
                 if x == "+":
                     opt.set(round(Decimal(b) + Decimal(a), 2))
                 if x == "-":
@@ -76,12 +83,11 @@ def function(x):
                 if x == "y^x":
                     opt.set(round(Decimal(b) ** Decimal(a), 2))
                 if x == "T%":
-                    opt.set(round(c * 100, 2))
+                    opt.set(round((Decimal(a) / Decimal(b)) * 100, 2))
                 if x == "del%":
-                    opt.set(round((c-1)*100, 2))
+                    opt.set(round(((Decimal(a) / Decimal(b))-1)*100, 2))
                 stack.pop()
                 spt.set(stack)
-
             if x in ["1/x", "+/-", "%", "EEX"]:
                 a = opt.get()
                 if x == "1/x":
@@ -91,30 +97,23 @@ def function(x):
                 if x == "%":
                     opt.set(round(Decimal(a) / 100, 2))
                 if x == "EEX":
-                    opt.set(str(a))
-
-
+                    opt.set(10 ** Decimal(a))
         except IndexError:  # There isn't enough args in the stack to do the operation
             opt.set(errorMessages["stackError"])
-            isAnErrorHappened = True
-            
+            isAnErrorHappened = True           
         except ZeroDivisionError:  # Division by zero
             opt.set(errorMessages["divisionByZero"])
             isAnErrorHappened = True
-            
         except ValueError:
             opt.set(errorMessages["domainError"])
             isAnErrorHappened = True
-            
         except OverflowError:
             opt.set(errorMessages["overflow"])
             isAnErrorHappened = True
-    if x in mem_cores:
+
+    if x in finance_dict.keys():
         if x in ["n", "i", "PV", "PMT", "FV"]:
             memory(x)
-            if len(stack) == 4:
-                formula(x)
-
 
 #individual buttons / commands
 def press_f():
@@ -145,10 +144,12 @@ def press_ENTER():
         refresh_stack_display()
 
 def press_xyswitch():
-    a = opt.get()
+    a = [opt.get()]
+    c = a.copy()
     b = stack[-1]
-
-
+    opt.set(b)
+    stack[-1] = c[0]
+    spt.set(stack)
 
 #outside commands
 def press_num(num):
@@ -165,7 +166,7 @@ def press_num(num):
 def refresh_stack_display():
     global sqc
     global stack
-    if stack == []:
+    if stack == '':
         stack = [opt.get()]
         spt.set(stack)
         press_C()
@@ -178,39 +179,80 @@ def memory(var):
     if var in ["n", "i", "PV", "PMT", "FV"]:
         finance_dict[var] = opt.get()
         press_C()
+        if  finance_dict['n'] == '' and finance_dict['i'] != None and finance_dict['PV'] != None and finance_dict["PMT"] != None and finance_dict['FV'] != None:
+            find_n(finance_dict['i'], finance_dict['PV'], finance_dict['PMT'], finance_dict['FV'])
+            opt.set(finance_dict["n"])
+        if  finance_dict['n'] != None and finance_dict['i'] == '' and finance_dict['PV'] != None and finance_dict["PMT"] != None and finance_dict['FV'] != None:
+            find_i(finance_dict['n'], finance_dict['PV'], finance_dict['PMT'], finance_dict['FV'])
+            opt.set(finance_dict["i"])  
+        if  finance_dict['n'] != None and finance_dict['i'] != None and finance_dict['PV'] == '' and finance_dict["PMT"] != None and finance_dict['FV'] != None:
+            find_PV(finance_dict['n'], finance_dict['i'], finance_dict['PMT'], finance_dict['FV'])
+            opt.set(finance_dict["PV"])          
+        if  finance_dict['n'] != None and finance_dict['i'] != None and finance_dict['PV'] != None and finance_dict["PMT"] == '' and finance_dict['FV'] != None:
+            find_PMT(finance_dict['n'], finance_dict['i'], finance_dict['PV'], finance_dict['FV'])
+            opt.set(finance_dict["PMT"])
+        if  finance_dict['n'] != None and finance_dict['i'] != None and finance_dict['PV'] != None and finance_dict["PMT"] != None and finance_dict['FV'] == '':
+            find_FV(finance_dict['n'], finance_dict['i'], finance_dict['PV'], finance_dict['PMT'])
+            opt.set(finance_dict["FV"])
+        
         stack.append(str(var) + '=' + finance_dict[var])
         spt.set(stack)
-    print(finance_dict)
 
-def formula(n, i, PV, PMT, FV):
-    global finance_dict
-    n = Decimal(memory("n"))
-    i = Decimal(memory("i"))
-    PV = Decimal(memory("PV"))
-    PMT = Decimal(memory("PMT"))
-    FV = Decimal(memory("FV"))
-    if isinstance(formula, Event):
-        if n == None:
-            find_PMT()
-        if i == None:
-            find_PMT()
-        if PV == None:
-            find_PMT()
-        if PMT == None:
-            find_PMT()
-        if FV == None:
-            find_PMT()
+#Finance Calculations
+def find_n(i, PV, PMT, FV):
+    i = Decimal(i)
+    PV = Decimal(PV)
+    PMT = Decimal(PMT)
+    FV = Decimal(FV)
+    n1 = abs(FV / PV)
+    n2 = (i/100) + 1
+    n = log(n1, n2)
+    finance_dict['n'] = str(round(n, 3))
+
+def find_i(n, PV, PMT, FV):
+    n = Decimal(n)
+    PV = Decimal(PV)
+    PMT = Decimal(PMT)
+    FV = Decimal(FV)
+    i1 = abs(FV / PV)
+    i = i1**(1/n) - 1
+    finance_dict['i'] = str(round(i*100, 3))
+
+def find_PV(n, i, PMT, FV):
+    n = Decimal(n)
+    i = Decimal(i)
+    PMT = Decimal(PMT)
+    FV = Decimal(FV)
+    irt = (1+(i/100)) ** n
+    PV1 = (-1 * FV) / irt
+    PV2 = PMT / (i/100)
+    PV3 = PV2 * (1/irt)
+    PV = PV1 - (PV2 - PV3)
+    finance_dict['PV'] = str(round(PV, 2))
 
 def find_PMT(n, i, PV, FV):
-    global formula
-    irt = (1+(i/100))**n
-    PMT = Decimal(round((((PV*irt)+FV)*(i/100))/(1-irt), 2))
-    finance_dict["PMT"] = PMT
-    opt.set(finance_dict['PMT'])
-    stack.clear()
-    spt.set(stack)
+    n = Decimal(n)
+    i = Decimal(i)
+    PV = Decimal(PV)
+    FV = Decimal(FV)
+    irt = (1+(i/100)) ** n
+    PMT1 = Decimal(PV * irt)
+    PMT2 = Decimal(PMT1 + FV)
+    PMT3 = Decimal(PMT2 * i / 100)
+    PMT = Decimal(PMT3 / (1 - irt))
+    finance_dict['PMT'] = str(round(PMT, 2))
 
-
+def find_FV(n, i, PV, PMT):
+    n = Decimal(n)
+    i = Decimal(i)
+    PV = Decimal(PV)
+    PMT = Decimal(PMT)
+    irt = (1+(i/100)) ** n
+    FV1 = Decimal(-1 * PV * irt)
+    FV2 = Decimal(PMT * (irt - 1))
+    FV3 = Decimal(FV2 / (i/100))
+    FV = Decimal(FV1 - FV3)
+    finance_dict['FV'] = str(round(FV, 2))
 
 #shift F commands
 def press_REG():
@@ -219,11 +261,13 @@ def press_REG():
     global f_function
     global isAnErrorHappened
     opt.set("")
-    spt.set("[ ]")
+    spt.set("")
     sqc = ''
     stack = []
     f_function = False
     isAnErrorHappened = False
+
+#shift G commands
 
 #calculator as bg image 
 bg = PhotoImage(file = "C:\\Users\\Key\\Desktop\\PyProFE\\PyProjectFE\\Calculator.png")
